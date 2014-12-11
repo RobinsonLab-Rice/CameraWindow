@@ -428,30 +428,28 @@ set(handles.AutoConT,'String',names{val});
 
 
 function ResetProps(obj,~,h)
-fields = {'exposureProperty','exposurePropertyRange','autoExposureProperty', ...
-    'autoExposurePropertyRange','contrastProperty','contrastPropertyRange', ...
-    'autoContrastProperty','autoContrastPropertyRange'};
-if ~isfield(h.settings,'autoContrastProperty')
-    fields(7:8) = [];
-end
-if ~isfield(h.settings,'contrastProperty')
-    fields(5:6) = [];
-end
-if ~isfield(h.settings,'autoExposureProperty')
-    fields(3:4) = [];
-end
-if ~isfield(h.settings,'exposureProperty')
-    fields(1:2) = [];
-end
-if ~isempty(fields)
-    h.settings = rmfield(h.settings,fields);
-end
-set(h.ExpT,'String',[]);
-set([h.FPT,h.FCT],'Enable','off');
-set(h.AutoExpT,'String',[]);
-set(h.ConT,'String',[]);
-set(h.AutoConT,'String',[]);
-guidata(obj,h);
+disp(h)
+fields = {'exposureProperty','exposurePropertyRange','autoExposureProperty'}
+handles.settings.exposureProperty = names{val};
+handles.settings.exposurePropertyRange = range;
+guidata(hObject,handles);
+set(handles.ExpT,'String',names{val});
+set([handles.FPT,handles.FCT],'Enable','on');
+
+handles.settings.autoExposureProperty = names{val};
+handles.settings.autoExposurePropertyRange = range;
+guidata(hObject,handles);
+set(handles.AutoExpT,'String',names{val});
+
+handles.settings.contrastProperty = names{val};
+handles.settings.contrastPropertyRange = range;
+guidata(hObject,handles);
+set(handles.ConT,'String',names{val});
+
+handles.settings.autoContrastProperty = names{val};
+handles.settings.autoContrastPropertyRange = range;
+guidata(hObject,handles);
+set(handles.AutoConT,'String',names{val});
 
 
 % --- Executes on button press in AddPropButton.

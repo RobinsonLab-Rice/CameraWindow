@@ -7,7 +7,7 @@ if ~isempty(h)
 end
 path = which('CameraWindow.m');
 path(end-13:end) = [];
-if ~exist([path,'camera.config'],'file')
+if ~exist([path,'camera.mat'],'file')
     if ~exist([path,'neuroPG.config'],'file')
         warndlg('No Camera File (camera.mat) Found');
         % the file, 'camera.mat', needs to be in the same directory as
@@ -52,7 +52,7 @@ if ~exist([path,'camera.config'],'file')
         camera = load([path,'neuroPG.config'],'-mat');
     end
 else
-    camera = load('camera.config','-mat');
+    camera = load('camera','-mat');
 end
 a(1) = ~isfield(camera,'adaptor');
 a(end+1) = ~isfield(camera,'deviceID');
@@ -1214,9 +1214,9 @@ function resizeFcn(obj,~)
     
     UD.position = p; % Save resizing results
     set(obj,'Position',p,'UserData',UD) % Resize figure
-% else
-%     % Currently, do nothing
-% end
+else
+    % Currently, do nothing
+end
 end
 
 % Button Down Function for the preview image.
