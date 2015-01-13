@@ -1,16 +1,66 @@
-function figureHandle = CameraWindow()
-h = findall(0,'tag','CameraWindow');
-if ~isempty(h)
-    figure(h);
-    figureHandle = h;
-    return;
+function figureHandle = CameraWindow(varargin)
+v = varargin;
+persistent windowHandles
+if ~isempty(windowHandles) & isnan(windowHandles)
+    windowHandles = [];
 end
+if numel(v) > 0
+    if isa(v{1},'char')
+        if strcmp(v{1},'list')
+            figureHandle = windowHandles;
+            return;
+        end
+        if strcmp(v{1},'close')
+            clear CameraWindow
+            h = findall(0,'Tag','CameraWindow');
+            for ii = 1:numel(h)
+                close(h(ii));
+            end
+            h = findall(0,'Tag','CameraControls');
+            for ii = 1:numel(h)
+                close(h(ii));
+            end
+            h = timerfind('Tag','MemTimer');
+            stop(h);
+            delete(h);
+            return;
+        end
+        if strcmp(v{1},'closeFCN') && numel(v) == 2
+            windowHandles(v{2},:) = [NaN,NaN];
+            return;
+        end
+        if strcmp(v{1},'new')
+            
+        end
+    end
+    if isa(v{1},'double')
+        if size(windowHandles,1) >= v{1} && ishandle(windowHandles(v{1},:))
+            figure(windowHandles(v{1},2));
+            figure(windowHandles(v{1},1));
+            figureHandle = windowHandles(v{1},1);
+            return;
+        else
+            disp('CameraWindow Error: Index not valid.')
+            return;
+        end
+    end
+else
+    h = findall(0,'tag','CameraWindow');
+    if ~isempty(h)
+        figure(h(1));
+        figureHandle = h(1);
+        return;
+    end
+    configName = 'camera.config';
+end
+
 path = which('CameraWindow.m');
 path(end-13:end) = [];
-if ~exist([path,'camera.config'],'file')
+configFiles = dir([path,'camera*.config']);
+if isempty(configFiles)
     if ~exist([path,'neuroPG.config'],'file')
-        warndlg('No Camera File (camera.mat) Found');
-        % the file, 'camera.mat', needs to be in the same directory as
+        warndlg('No Camera File (camera.config or neuroPG.config) Found');
+        % the file, 'camera.config' or 'neuroPG.config', must have the same path as
         % CameraWindow.m and have the following variables saved in the file:
         % ------------------------------------------------------------------
         % adaptor - String. Video adaptor of the camera. Check imaqhwinfo()
@@ -52,7 +102,18 @@ if ~exist([path,'camera.config'],'file')
         camera = load([path,'neuroPG.config'],'-mat');
     end
 else
-    camera = load('camera.config','-mat');
+    if numel(configFiles) > 1
+        list = {configFiles(:).name};
+        [sel,ok] = listdlg('Name','CameraWindow','PromptString', ...
+            'Select a camera','ListString',list,'SelectionMode','single', ...
+            'ListSize',[200,15*numel(configFiles)]);
+        if ok == 1
+            configName = configFiles(sel).name;
+        else
+            return;
+        end
+    end
+    camera = load([path,configName],'-mat');
 end
 a(1) = ~isfield(camera,'adaptor');
 a(end+1) = ~isfield(camera,'deviceID');
@@ -60,7 +121,7 @@ a(end+1) = ~isfield(camera,'format');
 a(end+1) = ~isfield(camera,'resolution');
 if any(a)
     warndlg('Camera.mat Formatting Error');
-    % See above comments for camera.mat formatting:  Lines 6-45
+    % See above comments for camera.mat formatting:  Lines 52-87
     figureHandle = [];
     return;
 end
@@ -71,10 +132,19 @@ if isempty(imaqhwinfo(camera.adaptor,'DeviceIDs'))
     return;
 end
 res = camera.resolution;
+try
+    UD.video = videoinput(camera.adaptor,camera.deviceID,camera.format);
+catch
+    warndlg('Camera initialization failed: disconnected or in use', ...
+        'CameraWindow Error');
+    return;
+end
+
 figureHandle = figure('Units','pixels', ... 
     'MenuBar','none','IntegerHandle','off','Name','CameraWindow', ... 
     'NumberTitle','off','Tag','CameraWindow','CloseRequestFcn', ...
     @closeFcn);
+windowHandles(end+1,1) = figureHandle;
 UD.CameraWindow = figureHandle;
 if isfield(camera,'CameraWindowPosition')
     set(figureHandle,'Position',camera.CameraWindowPosition);
@@ -104,7 +174,7 @@ axis off
 hold all
 UD.pointer = plot(20,20,'go','MarkerSize',7,'LineWidth',1,'HitTest','off');
 hold off
-UD.video = videoinput(camera.adaptor,camera.deviceID,camera.format);
+% UD.video = videoinput(camera.adaptor,camera.deviceID,camera.format);
 UD.source = getselectedsource(UD.video);
 UD.controlsHandle = figure('Units','pixels','Resize','off', ... 
     'MenuBar','none','IntegerHandle','off','Name','Camera Controls', ... 
@@ -117,6 +187,8 @@ else
     pos(3:4) = [300,480];
 end
 set(UD.controlsHandle,'Position',pos);
+windowHandles(end,2) = UD.controlsHandle;
+UD.timerIndex = size(windowHandles,1);
 data = getsnapshot(UD.video);
 % info = whos('data');
 UD.bytesPerFrame = numel(data);
@@ -124,8 +196,10 @@ set(figureHandle,'UserData',UD);
 set(UD.previewHandle,'ButtonDownFcn',@PreviewBDF);
 setappdata(UD.previewHandle,'UpdatePreviewWindowFcn',@CWUpdateFcn);
 preview(UD.video,UD.previewHandle);
-for i = 1:numel(camera.initialCommands)
-    eval(camera.initialCommands{i});
+if isfield(camera,'initialCommands')
+    for i = 1:numel(camera.initialCommands)
+        eval(camera.initialCommands{i});
+    end
 end
 t = timer('TimerFcn',{@populateControls,camera,UD},'StopFcn',@(t,e)delete(t), ...
     'Name','CameraWindow Startup Timer');
@@ -185,11 +259,11 @@ if isfield(c,'exposureProperty')
         min = c.exposurePropertyRange(1);
         max = c.exposurePropertyRange(2);
         if min == 0
-            minStep = (max - min) / 100;
+            minStep = (max - min) / max / 100;
         else
             minStep = min;
         end
-        step = (max - min) / 10;
+        step = (max - min) / max / 10;
     elseif isa(c.exposurePropertyRange,'logical')
         min = 0;
         minStep = 1;
@@ -268,11 +342,11 @@ if isfield(c,'autoExposureProperty')
         min = c.autoExposurePropertyRange(1);
         max = c.autoExposurePropertyRange(2);
         if min == 0
-            minStep = (max - min) / 100;
+            minStep = (max - min) / max / 100;
         else
             minStep = min;
         end
-        step = (max - min) / 10;
+        step = (max - min) / max / 10;
     elseif isa(c.autoExposurePropertyRange,'logical')
         min = 0;
         minStep = 1;
@@ -318,11 +392,11 @@ if isfield(c,'contrastProperty')
         min = c.contrastPropertyRange(1);
         max = c.contrastPropertyRange(2);
         if min == 0
-            minStep = (max - min) / 100;
+            minStep = (max - min) / max / 100;
         else
             minStep = min;
         end
-        step = (max - min) / 10;
+        step = (max - min) / max / 10;
     elseif isa(c.contrastPropertyRange,'logical')
         min = 0;
         minStep = 1;
@@ -370,11 +444,11 @@ if isfield(c,'autoContrastProperty')
         min = c.autoContrastPropertyRange(1);
         max = c.autoContrastPropertyRange(2);
         if min == 0
-            minStep = (max - min) / 100;
+            minStep = (max - min) / max / 100;
         else
             minStep = min;
         end
-        step = (max - min) / 10;
+        step = (max - min) / max / 10;
     elseif isa(c.autoContrastPropertyRange,'logical')
         min = 0;
         minStep = 1;
@@ -425,11 +499,11 @@ if isfield(c,'extProperty')
             min = range(1);
             max = range(2);
             if min == 0
-                minStep = (max - min) / 100;
+                minStep = (max - min) / max / 100;
             else
                 minStep = min;
             end
-            step = (max - min) / 10;
+            step = (max - min) / max / 10;
         elseif isa(range,'logical')
             min = 0;
             minStep = 1;
@@ -529,8 +603,10 @@ end
 
 set(UD.CameraWindow,'UserData',UD)
 
-start(timer('Name','MemTimer','ExecutionMode','FixedRat','Period',1,'TimerFcn', ...
-    {@memTimerFcn,UD}))
+timerName = ['MemTimer',num2str(UD.timerIndex)];
+
+start(timer('Name',timerName,'ExecutionMode','FixedRat','Period',1,'TimerFcn', ...
+    {@memTimerFcn,UD},'Tag','MemTimer'))
 
 [~,h] = MatPad;
 if ~isempty(h)
@@ -1172,8 +1248,10 @@ function resizeFcn(obj,~)
     r = UD.resolution(2) / UD.resolution(1); % aspect ratio y/x
     y = p(2) + p(4); % pixel position of top of figure
     
-    a = p(3) == pO(3);
-    b = p(4) == pO(4);
+    a = p(3) == pO(3); % Width change check
+    b = p(4) == pO(4); % Height change check
+    c = p(1) == Po(1); % Bottom left corner X change check
+    d = p(2) == pO(2); % Bottom left corner Y change check
     
     newX = round(p(4)/r); % New width if using current height
     newY = round(p(3)*r); % New height if using current width
@@ -1462,21 +1540,23 @@ stop(obj);
 delete(obj);
 end
 
-function closeFcn(~,~)
-t = timerfind('Name','MemTimer');
+function closeFcn(obj,~)
+windowHandles = CameraWindow('list');
+[ind,~] = find(windowHandles == obj);
+t = timerfind('Name',['MemTimer',num2str(ind)]);
 if ~isempty(t)
     stop(t);
     delete(t);
 end
-cwh = findall(0,'Tag','CameraWindow');
-cch = findall(0,'Tag','CameraControls');
-if ~isempty(cwh)
-    UD = get(cwh(1),'UserData');
+cwh = windowHandles(ind,1);
+cch = windowHandles(ind,2);
+if ishandle(cwh)
+    UD = get(cwh,'UserData');
     stoppreview(UD.video);
     delete(UD.video);
     delete(cwh);
 end
-if ~isempty(cch)
+if ishandle(cch)
     delete(cch);
 end
 cbh = findall(0,'Tag','CameraCheckbox');
@@ -1495,4 +1575,5 @@ if ~isempty(h)
     logentry = sprintf('<HTML><BODY color="%s">%s', 'red', entry);
     MatPad('add',logentry,'save');
 end
+CameraWindow('closeFCN',ind);
 end

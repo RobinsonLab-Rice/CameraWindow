@@ -60,19 +60,35 @@ guidata(hObject,handles);
 fpath = which('configCamera');
 fpath = fpath(1:end-14);
 handles.fpath = fpath;
-if exist([fpath,'neuroPG.config'],'file')
+nConfig = dir([fpath,'neuroPG.config']);
+cConfig = dir([fpath,'camera*.config']);
+if numel(nConfig) > 0
     handles.fname = 'neuroPG.config';
     settings = load([fpath,fname],'-mat');
     if numel(varargin) > 0 && varargin{1} == 1
         copyfile([fpath,'neuroPG.config'],[fpath,'neuroPG.config','.bak']);
     end
-elseif exist([fpath,'camera.config'],'file')
+elseif numel(cConfig) > 0
     handles.fname = 'camera.config';
-    resp = questdlg('Import Settings from current file?','CameraWindow config','Yes');
+    resp = questdlg('Import Settings from current file?','CameraWindow config', ...
+        'Yes','No','New Camera','Yes');
     if strcmp(resp,'Yes')
-        settings = load([fpath,'camera.config'],'-mat');
+        if numel(cConfig) > 1
+            numCam = numel(cConfig);
+            list = {cConfig(:).name};
+            [sel,ok] = listdlg('Name','CameraWindow config','PromptString', ...
+                'Select a camera','ListString',list,'SelectionMode','single', ...
+                'ListSize',[300,15*numCam]);
+            if ok == 1
+                handles.fname = cConfig(sel).name;
+            end
+        end
+        settings = load([handles.fpath,handles.fname],'-mat');
     else
         settings = [];
+        if strcmp(resp,'New Camera')
+            handles.newCamera = 1;
+        end
     end
     if numel(varargin) > 0 && varargin{1} == 1
         copyfile([fpath,'camera.config'],[fpath,'camera.config','.bak']);
@@ -142,7 +158,14 @@ else
         ind = find(strcmp(settings.format,camera{3}.SupportedFormats));
         set(handles.FormatsBox,'Value',ind);
         set(handles.FormatText,'String',settings.format)
-        vid = videoinput(camera{1},camera{2},settings.format);
+        try
+            vid = videoinput(camera{1},camera{2},settings.format);
+        catch
+            guidata(hObject,handles);
+            warndlg('Camera intialization failed: disconnected or in use', ...
+                'CameraWindow config Error');
+            return;
+        end
         handles.vid = vid;
         src = getselectedsource(vid);
         handles.src = src;
@@ -264,6 +287,9 @@ end
 
 % --- Executes on selection change in FormatsBox.
 function FormatsBox_Callback(hObject, eventdata, h)
+if ~isfield(h,'camera')
+    return;
+end
 val = get(hObject,'Value');
 UD = get(hObject,'UserData');
 if isempty(UD) || numel(val) == 1
@@ -278,7 +304,13 @@ if isfield(h,'vid') && isa(h.vid,'videoinput') && isvalid(h.vid)
 end
 format = h.camera{3}.SupportedFormats{val};
 h.settings.format = format;
-vid = videoinput(h.camera{1},h.camera{2},format);
+try
+    vid = videoinput(h.camera{1},h.camera{2},format);
+catch
+    warndlg('Camera intialization failed: disconnected or in use', ...
+        'CameraWindow config Error');
+    return;
+end
 h.vid = vid;
 src = getselectedsource(vid);
 h.src = src;
@@ -669,16 +701,62 @@ if strcmp(resp,'Yes')
     delete(win);
 end
 
+if isfield(handles,'newCamera')
+    cConfig = dir([handles.fpath,'camera*.config']);
+    if numel(cConfig) > 0
+        list = {cConfig(:).name};
+        if ~any(strcmp(list,'camera.config'))
+            handles.fname = 'camera.config';
+        else
+            for ii = 1:numel(cConfig)
+                camNums(ii) = str2double(list{ii}(7:end-6));
+            end
+            camNums(isnan(camNums)) = 1;
+            cVect = 1:numel(cConfig);
+            camInd = find(camNums ~= cVect,1,'first');
+            if isempty(camInd)
+                handles.fname = ['camera',num2str(numel(cConfig)+1),'.config'];
+            else
+                handles.fname = ['camera',num2str(camInd),'.config'];
+            end
+        end
+    end
+    
+end
+
 save([handles.fpath,handles.fname],'-struct','settings','-mat');
 close(get(hObject,'Parent'))
 
 
 function winCRF(~,~)
+clear winRES
 bh = findall(0,'Tag','DoneB');
 set(bh,'UserData',1);
 
 
 function winRES(obj,~,res)
+% Hold aspect ratio, monitor sizes, and screen maxed and halfed positions
+% persistently in function
+persistent r mon maxed maxedSet halfed halfedSet
+if isempty(r)
+    r =res(2) / res(1); % aspect ratio y/x
+end
+if isempty(mon)
+    mon = get(0,'Monitor');
+end
+if isempty(maxed)
+    maxed = mon;
+    main = maxed(:,1) == 1 & maxed(:,2) == 1;
+    maxed(main,2) = 41; % Take into acount the menu bar
+    maxed(main,4) = maxed(main,4) - (41+75); % Reduce Height by menu and window top
+    maxed(~main,4) = maxed(~main,4) - 75; % Reduce Height by window top
+    % Calculate corresponding ratio locked positions
+    
+end
+if isempty(halfed)
+    halfed = [mon,mon];
+end
+
 % The following code is an attempt to make resizing more stable in Windows
 % if ~libisloaded('user32') % Windows library gives access to mouse button state
 %     loadlibrary('user32.dll','user32.h');
@@ -687,9 +765,9 @@ function winRES(obj,~,res)
 % if  m ~= -32767 % Left mouse button not clicked
     
     p = get(obj,'Position');
+    disp(p)
     pO = get(obj,'UserData');
-    mon = get(0,'Monitor');
-    r =res(2) / res(1); % aspect ratio y/x
+    
     y = p(2) + p(4); % pixel position of top of figure
     
     a = p(3) == pO(3);
@@ -698,7 +776,7 @@ function winRES(obj,~,res)
     newX = round(p(4)/r); % New width if using current height
     newY = round(p(3)*r); % New height if using current width
     
-    if ~(a && b)
+    if ~(a && b) % if width or height changed
         if p(1) == 1 && p(2) == 41 && r < 1 % Check for Maximized and manually reshape
             p(3) = newX;
         elseif p(1) == 1 && p(2) == 41 && r > 1
