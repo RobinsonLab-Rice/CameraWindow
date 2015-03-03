@@ -554,6 +554,9 @@ uicontrol(ch,'Style','Edit','String','0','Units','normalized','Position', ...
 uicontrol(ch,'Style','Edit','String','255','Units','normalized','Position', ...
     [.3,.01,.1,.05],'Callback',{@HistMaxCBF,c,UD},'Tag','HistMax');
 
+uicontrol(ch,'Style','Toggle','Units','normalized','Position',[.7,.01,.3,.05],...
+    'String','Suspend Stream','Callback',{@SuspendCBF,c,UD},'Tag','SuspendButton');
+
 uicontrol(ch,'Style','PushButton','Units','normalized','Position',[.05,.39,.2,.15], ...
     'String','Snap','FontSize',10,'Callback',{@SnapCBF,c,UD},'UserData',0, ...
     'Tag','SnapButton');
@@ -1021,6 +1024,17 @@ set(findall(0,'Tag','HistMax'),'String',num2str(clim(2)));
 set(UD.axesHandle,'CLim',clim);
 end
 
+% Callback Function for Suspend Preview Button
+function SuspendCBF(obj,~,~,UD)
+if get(obj,'Value') == 1
+    stoppreview(UD.video);
+    set(obj,'String','Resume Preview');
+else
+    preview(UD.video,UD.previewHandle);
+    set(obj,'String','Suspend Preview');
+end
+end
+
 % Callback Function for Snap button
 function SnapCBF(obj,~,camera,UD)
 ImgStack = get(obj,'UserData');
@@ -1250,7 +1264,7 @@ function resizeFcn(obj,~)
     
     a = p(3) == pO(3); % Width change check
     b = p(4) == pO(4); % Height change check
-    c = p(1) == Po(1); % Bottom left corner X change check
+    c = p(1) == pO(1); % Bottom left corner X change check
     d = p(2) == pO(2); % Bottom left corner Y change check
     
     newX = round(p(4)/r); % New width if using current height
