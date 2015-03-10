@@ -223,10 +223,6 @@ switch resp
     case 'Yes'
         backupName = [fname(1:end-6),'bak'];
         movefile(fname,backupName,'f');
-    case 'No'
-        
-    otherwise
-        return;
 end
 settings = getappdata(h.app,'settings'); %#ok<NASGU>
 save(fname,'-struct','settings','-mat');
