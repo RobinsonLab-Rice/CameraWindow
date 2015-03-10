@@ -128,7 +128,7 @@ if count == 0
 else
     handles.available = available;
     for i = 1:count
-        names{i} = available{i,3}.DeviceName; %#ok<AGROW>
+        names{i} = available{i,3}.DeviceName; 
     end
     set(handles.CamerasBox,'String',names);
     % Change this section to display previous settings
@@ -209,7 +209,7 @@ guidata(hObject, handles);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = configCamera_OutputFcn(hObject, eventdata, handles) 
+function varargout = configCamera_OutputFcn(~, ~, handles) 
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -220,7 +220,7 @@ varargout{1} = handles.output;
 
 
 % --- Executes on selection change in CamerasBox.
-function CamerasBox_Callback(hObject, eventdata, handles)
+function CamerasBox_Callback(hObject, ~, handles) %#ok<*DEFNU>
 val = get(hObject,'Value');
 camera = handles.available(val,:);
 handles.camera = camera;
@@ -279,14 +279,14 @@ guidata(hObject,handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function CamerasBox_CreateFcn(hObject, eventdata, handles)
+function CamerasBox_CreateFcn(hObject, ~, ~)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 
 % --- Executes on selection change in FormatsBox.
-function FormatsBox_Callback(hObject, eventdata, h)
+function FormatsBox_Callback(hObject, ~, h)
 if ~isfield(h,'camera')
     return;
 end
@@ -326,14 +326,14 @@ guidata(hObject,h);
 
 
 % --- Executes during object creation, after setting all properties.
-function FormatsBox_CreateFcn(hObject, eventdata, handles)
+function FormatsBox_CreateFcn(hObject, ~, ~)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 
 % --- Executes on selection change in PropertiesBox.
-function PropertiesBox_Callback(hObject, eventdata, handles)
+function PropertiesBox_Callback(hObject, ~, handles)
 val = get(hObject,'Value');
 names = get(hObject,'String');
 if ischar(names) && strcmp(names,'Properties List')
@@ -346,7 +346,7 @@ type2 = info.Type;
 if strcmp(type,'enum')
     ranges = range{1};
     for i = 2:numel(range)
-        ranges = [ranges,' ',range{i}]; %#ok<AGROW>
+        ranges = [ranges,' ',range{i}];
     end
     set(handles.RangeT,'String',ranges)
 else
@@ -356,14 +356,14 @@ set(handles.TypeT,'String',[type,' ',type2]);
 
 
 % --- Executes during object creation, after setting all properties.
-function PropertiesBox_CreateFcn(hObject, eventdata, handles)
+function PropertiesBox_CreateFcn(hObject, ~, ~)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 
 % --- Executes on button press in ExposureButton.
-function ExposureButton_Callback(hObject, eventdata, handles)
+function ExposureButton_Callback(hObject, ~, handles)
 names = get(handles.PropertiesBox,'String');
 if ischar(names) && strcmp(names,'Properties List')
     return;
@@ -380,6 +380,19 @@ if ~strcmp(type,'enum')
         range = int32(range(1):range(2));
     end
 end
+if any(isnan(range)) || any(isinf(range))
+    resp = inputdlg({['Min range (reptorted: ',num2str(range(1)),')'], ...
+        ['Max range (reptorted: ',num2str(range(2)),')']}, ...
+        'CameraWindow range error',[1,50;1,50]);
+    if isempty(resp)
+        return;
+    end
+    range = str2double(resp)';
+    if any(isnan(range)) || any(isinf(range))
+        warning('CameraWindow property range values invalid');
+        return;
+    end
+end
 handles.settings.exposureProperty = names{val};
 handles.settings.exposurePropertyRange = range;
 guidata(hObject,handles);
@@ -388,7 +401,7 @@ set([handles.FPT,handles.FCT],'Enable','on');
 
 
 % --- Executes on button press in AutoExpButton.
-function AutoExpButton_Callback(hObject, eventdata, handles)
+function AutoExpButton_Callback(hObject, ~, handles)
 names = get(handles.PropertiesBox,'String');
 if ischar(names) && strcmp(names,'Properties List')
     return;
@@ -412,7 +425,7 @@ set(handles.AutoExpT,'String',names{val});
 
 
 % --- Executes on button press in ContrastButton.
-function ContrastButton_Callback(hObject, eventdata, handles)
+function ContrastButton_Callback(hObject, ~, handles)
 names = get(handles.PropertiesBox,'String');
 if ischar(names) && strcmp(names,'Properties List')
     return;
@@ -436,7 +449,7 @@ set(handles.ConT,'String',names{val});
 
 
 % --- Executes on button press in AutoConButton.
-function AutoConButton_Callback(hObject, eventdata, handles)
+function AutoConButton_Callback(hObject, ~, handles)
 names = get(handles.PropertiesBox,'String');
 if ischar(names) && strcmp(names,'Properties List')
     return;
@@ -487,7 +500,7 @@ guidata(obj,h);
 
 
 % --- Executes on button press in AddPropButton.
-function AddPropButton_Callback(hObject, eventdata, handles)
+function AddPropButton_Callback(hObject, ~, handles)
 names = get(handles.PropertiesBox,'String');
 if ischar(names) && strcmp(names,'Properties List')
     return;
@@ -522,18 +535,18 @@ set(handles.AdditionalBox,'String',list);
 
 
 % --- Executes on selection change in AdditionalBox.
-function AdditionalBox_Callback(hObject, eventdata, handles)
+function AdditionalBox_Callback(~, ~, ~)
 
 
 % --- Executes during object creation, after setting all properties.
-function AdditionalBox_CreateFcn(hObject, eventdata, handles)
+function AdditionalBox_CreateFcn(hObject, ~, ~)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 
 % --- Executes on button press in RemoveButton.
-function RemoveButton_Callback(hObject, eventdata, handles)
+function RemoveButton_Callback(hObject, ~, handles)
 list = get(handles.AdditionalBox,'String');
 if ~isempty(list)
     if ischar(list) || numel(list) == 1
@@ -556,7 +569,7 @@ end
 
 
 % --- Executes on button press in DoneB.
-function DoneB_Callback(hObject, eventdata, handles)
+function DoneB_Callback(hObject, ~, handles)
 count = 4;
 a = isfield(handles.settings,'exposureProperty');
 b = isempty(get(handles.ExpT,'String'));
@@ -823,7 +836,7 @@ set(win(2),'Position',[10,50,300,480]);
 
 
 % --- Executes when user attempts to close configCamera.
-function configCamera_CloseRequestFcn(hObject, eventdata, handles)
+function configCamera_CloseRequestFcn(hObject, ~, handles)
 if isfield(handles,'vid') && isa(handles.vid,'videoinput') && isvalid(handles.vid)
     delete(handles.vid);
 end
@@ -831,7 +844,7 @@ delete(hObject);
 
 
 
-function FPT_Callback(hObject, eventdata, handles)
+function FPT_Callback(hObject, ~, handles)
 val = str2double(get(hObject,'String'));
 prop = get(handles.ExpT,'String');
 if ~isempty(prop)
@@ -851,14 +864,14 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function FPT_CreateFcn(hObject, eventdata, handles)
+function FPT_CreateFcn(hObject, ~, ~)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 
 
-function FCT_Callback(hObject, eventdata, handles)
+function FCT_Callback(hObject, ~, handles)
 val = str2double(get(hObject,'String'));
 prop = get(handles.ExpT,'String');
 if ~isempty(prop)
@@ -878,14 +891,14 @@ end
 
 
 % --- Executes during object creation, after setting all properties.
-function FCT_CreateFcn(hObject, eventdata, handles)
+function FCT_CreateFcn(hObject, ~, ~)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
 
 
 % --- Executes on button press in InitialB.
-function InitialB_Callback(hObject, eventdata, handles)
+function InitialB_Callback(hObject, ~, handles)
 hs = handles.settings;
 if isfield(hs,'initialCommands')
     cmds = hs.initialCommands;
@@ -1626,7 +1639,7 @@ else
     end
 end
 
-function result = local_isInvokeActiveXCallback(gui_State, varargin)
+function result = local_isInvokeActiveXCallback(~, varargin)
 
 try
     result = ispc && iscom(varargin{1}) ...

@@ -482,7 +482,7 @@ if isfield(c,'extProperty')
         range = c.extPropertyRange{i};
         pUD.property = lp;
         pUD.range = range;
-        tag = ['CamProp',num2str(i)];
+        tag = ['CW',lp];
         l(end+1) = uicontrol(panel,'Style','Text','String',[lp,':'],...
             'HorizontalAlignment','right','Units','pixels','Position',labelPos);
         e(end+1) = uicontrol(panel,'Style','Edit','String','','Tag',tag, ...
