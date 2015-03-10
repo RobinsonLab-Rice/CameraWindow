@@ -595,13 +595,14 @@ if any(strcmp(fieldnames(get(UD.source)),'FrameRate'))
         UD.frameRate = str2double(UD.frameRate);
     end
 else
-    resp = inputdlg('No FrameRate property: Specify frame rate', ...
-        'CameraWindow: FrameRate Error');
-    if isempty(resp)
-        UD.frameRate = 30;
-    else
-        UD.frameRate = str2double(resp);
-    end
+%     resp = inputdlg('No FrameRate property: Specify frame rate', ...
+%         'CameraWindow: FrameRate Error');
+%     if isempty(resp)
+%         UD.frameRate = 30;
+%     else
+%         UD.frameRate = str2double(resp);
+%     end
+    UD.frameRate = 'frameCount';
 end
 
 set(UD.CameraWindow,'UserData',UD)
@@ -1242,8 +1243,13 @@ function memTimerFcn(~,~,UD)
 th = findall(0,'Tag','VidTimeText');
 [~,sys] = memory;
 a = sys.PhysicalMemory.Available * .9;
-set(th,'String',['~',num2str(floor(a / UD.bytesPerFrame / UD.frameRate)) ...
-    ,' seconds of video possible']);
+if isa(UD.frameRate,'double')
+    set(th,'String',['~',num2str(floor(a / UD.bytesPerFrame / UD.frameRate)) ...
+        ,' seconds of video possible']);
+else
+    set(th,'String',['~',num2str(floor(a / UD.bytesPerFrame)) ...
+        ,' frames of video possible']);
+end
 end
 
 % Resize Function for the CameraWindow or image stacks

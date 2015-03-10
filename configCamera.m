@@ -714,6 +714,24 @@ if strcmp(resp,'Yes')
     delete(win);
 end
 
+resp = questdlg('Set default path and filename?','CameraWindow config', ...
+    'Yes','No','Yes');
+if strcmp(resp,'Yes')
+    str1 = sprintf(['Enter path or leave blank to clear:\n', ...
+        '  Start with "current" to reference the PWD (current\\pics)\n', ...
+        '  Start with "tag" to specify the Tag of a textbox with the desired path']);
+    str2 = 'Enter filename or leave blank to clear';
+    resp = inputdlg({str1,str2},'CameraWindow config',[1,75;1,50]);
+    if numel(resp) ~= 0
+        if ~isempty(resp{1})
+            settings.snapshotSavePath = resp{1};
+        end
+        if ~isempty(resp{2})
+            settings.fileName = resp{2};
+        end
+    end
+end
+
 if isfield(handles,'newCamera')
     cConfig = dir([handles.fpath,'camera*.config']);
     if numel(cConfig) > 0
