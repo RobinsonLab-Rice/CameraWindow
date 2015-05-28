@@ -707,7 +707,7 @@ if strcmp(resp,'Yes')
         'Window Manager','CloseRequestFcn',@winCRF);
     uicontrol(win(3),'Style','Push','Units','normalized','String', ...
         'Reset Window Positions','Position',[0.1,.4,.8,.2],'Callback', ...
-        {@winRESET,settings.resolution,win(1:2)});
+        {@winRESET,win(1:2)});
     waitfor(hObject,'UserData')
     settings.CameraWindowPosition = get(win(1),'Position');
     settings.CameraControlsWindowPosition = get(win(2),'Position');
@@ -848,8 +848,12 @@ end
 return;
 
 
-function winRESET(~,~,res,win)
-set(win(1),'Position',[10,400-res(2),res]);
+function winRESET(~,~,win)
+monitor = get(0,'Monitor');
+pos = get(win(1),'Position');
+pos(1) = 10;
+pos(2) = monitor(1,4) - 50 - pos(4);
+set(win(1),'Position',pos);
 set(win(2),'Position',[10,50,300,480]);
 
 

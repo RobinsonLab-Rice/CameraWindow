@@ -1014,14 +1014,14 @@ if clim < 0
 elseif clim > 254
     clim = 254;
 end
-set(findall(0,'Tag','HistMax'),'String',num2str(clim));
+set(findall(0,'Tag','HistMin'),'String',num2str(clim));
 clim(2) = str2double(get(obj,'String'));
 if clim(2) < 1
     clim(2) = 1;
 elseif clim(2) > 255
     clim(2) = 255;
 end
-set(findall(0,'Tag','HistMax'),'String',num2str(clim(2)));
+set(obj,'String',num2str(clim(2)));
 set(UD.axesHandle,'CLim',clim);
 end
 
